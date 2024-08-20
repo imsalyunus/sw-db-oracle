@@ -6,11 +6,14 @@
       shell: |
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
         export ORACLE_SID=orcl
-        export PATH=$PATH:$ORACLE_HOME/bin
-      become: yes
+        export PATH=$ORACLE_HOME/bin:$PATH
+        echo $PATH  # Debugging: Print PATH to ensure it's set correctly
 
     - name: Check if the database is open
       shell: |
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$ORACLE_HOME/bin:$PATH
         sqlplus -s / as sysdba <<EOF
         set heading off
         set pagesize 0
@@ -32,6 +35,9 @@
 
     - name: Query Apply Lag from Data Guard
       shell: |
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$ORACLE_HOME/bin:$PATH
         sqlplus -s / as sysdba <<EOF
         set heading on
         set pagesize 50
