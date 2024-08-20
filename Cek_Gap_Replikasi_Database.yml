@@ -1,6 +1,7 @@
 ---
 - name: Query Oracle Database Role and Switchover Status
   hosts: linuxdb
+  become: yes
   tasks:
     - name: Set Oracle Environment Variables
       shell: |
