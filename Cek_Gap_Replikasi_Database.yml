@@ -2,23 +2,49 @@
 - name: Query Oracle Database Role and Switchover Status
   hosts: ora19cdg01.bwok.org
   tasks:
-    - name: Check if the database is open
+    - name: Set Oracle Environment Variables
       shell: |
-        # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
         export ORACLE_SID=orcl
         export PATH=$PATH:$ORACLE_HOME/bin
+      become: yes
 
-        # Run SQL Query to Check Database Status
+    - name: Check if the database is open
+      shell: |
         sqlplus -s / as sysdba <<EOF
         set heading off
         set pagesize 0
         set feedback off
-        select inst_id, name, value from gv$dataguard_stats where name='apply lag';
+        select status from v\$instance;
         EOF
-      register: db_status
+      register: instance_status
       ignore_errors: yes
 
-    - name: Check Database Status
+    - name: Display Instance Status
       debug:
-        msg: "Database Status:\n{{ db_status.stdout }}"
+        msg: "Instance Status:\n{{ instance_status.stdout }}"
+
+    - name: Verify Database is OPEN
+      assert:
+        that:
+          - "'OPEN' in instance_status.stdout"
+        fail_msg: "Database is not open. Cannot proceed with further queries."
+
+    - name: Query Apply Lag from Data Guard
+      shell: |
+        sqlplus -s / as sysdba <<EOF
+        set heading on
+        set pagesize 50
+        set feedback on
+        select inst_id, name, value from gv\$dataguard_stats where name='apply lag';
+        EOF
+      register: apply_lag_status
+      ignore_errors: yes
+
+    - name: Display Apply Lag Status
+      debug:
+        msg: |
+          Apply Lag Status:
+          {{ apply_lag_status.stdout }}
+          STDERR:
+          {{ apply_lag_status.stderr }}
