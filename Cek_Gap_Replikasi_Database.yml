@@ -14,7 +14,7 @@
         set heading off
         set pagesize 0
         set feedback off
-        select status from v\$instance;
+        select inst_id, name, value from gv$dataguard_stats where name='apply lag';
         EOF
       register: db_status
       ignore_errors: yes
@@ -22,30 +22,3 @@
     - name: Check Database Status
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
-
-    - name: Verify if Database is OPEN
-      assert:
-        that:
-          - "'OPEN' in db_status.stdout"
-        fail_msg: "Database is not open. Cannot proceed with further queries."
-
-    - name: Check Apply Lag in Data Guard
-      shell: |
-        # Set Environment Variables
-        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
-        export ORACLE_SID=orcl
-        export PATH=$PATH:$ORACLE_HOME/bin
-
-        # Run SQL Query to Check Apply Lag
-        sqlplus -s / as sysdba <<EOF
-        set heading off
-        set pagesize 0
-        set feedback off
-        select inst_id, name, value from gv\$dataguard_stats where name='apply lag';
-        EOF
-      register: apply_lag_status
-      ignore_errors: yes
-
-    - name: Display Apply Lag Status
-      debug:
-        msg: "Apply Lag Status:\n{{ apply_lag_status.stdout }}"
