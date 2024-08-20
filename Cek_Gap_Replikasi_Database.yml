@@ -2,7 +2,7 @@
 - name: Query Oracle Database Role and Switchover Status
   hosts: ora19cdg01.bwok.org
   tasks:
-    - name: Source the bash profile and set environment variables
+    - name: Cek Gap Replikasi DB
       shell: |
         # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
@@ -11,10 +11,6 @@
 
         # Run SQL Query
         sqlplus -s / as sysdba <<EOF
-        SET HEADING ON
-        SET PAGESIZE 50
-        SET FEEDBACK OFF
-        SET LINESIZE 150
         select inst_id, name, value from gv$dataguard_stats where name='apply lag';
         EOF
       register: db_status
