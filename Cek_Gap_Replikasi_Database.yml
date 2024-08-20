@@ -2,55 +2,23 @@
 - name: Query Oracle Database Role and Switchover Status
   hosts: linuxdb
   tasks:
-    - name: Set Oracle Environment Variables
+    - name: Source the bash profile and set environment variables
       shell: |
+        # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
         export ORACLE_SID=orcl
-        export PATH=$ORACLE_HOME/bin:$PATH
-        echo $PATH  # Debugging: Print PATH to ensure it's set correctly
+        export PATH=$PATH:$ORACLE_HOME/bin
 
-    - name: Check if the database is open
-      shell: |
-        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
-        export ORACLE_SID=orcl
-        export PATH=$ORACLE_HOME/bin:$PATH
-        sqlplus -s / as sysdba <<EOF
-        set heading off
-        set pagesize 0
-        set feedback off
-        select status from v\$instance;
-        EOF
-      register: instance_status
+        # Run SQL Query
+        echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+      register: db_status
       ignore_errors: yes
 
-    - name: Display Instance Status
+    - name: Display the database status
       debug:
-        msg: "Instance Status:\n{{ instance_status.stdout }}"
+        msg: "Database Status:\n{{ db_status.stdout }}"
 
-    - name: Verify Database is OPEN
-      assert:
-        that:
-          - "'OPEN' in instance_status.stdout"
-        fail_msg: "Database is not open. Cannot proceed with further queries."
-
-    - name: Query Apply Lag from Data Guard
-      shell: |
-        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
-        export ORACLE_SID=orcl
-        export PATH=$ORACLE_HOME/bin:$PATH
-        sqlplus -s / as sysdba <<EOF
-        set heading on
-        set pagesize 50
-        set feedback on
-        select inst_id, name, value from gv\$dataguard_stats where name='apply lag';
-        EOF
-      register: apply_lag_status
-      ignore_errors: yes
-
-    - name: Display Apply Lag Status
-      debug:
-        msg: |
-          Apply Lag Status:
-          {{ apply_lag_status.stdout }}
-          STDERR:
-          {{ apply_lag_status.stderr }}
+    - name: Check for errors
+      fail:
+        msg: "Failed to execute SQL query or no output received."
+      when: db_status.rc != 0 or "'apply lag' not found in db_status.stdout"
