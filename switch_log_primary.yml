@@ -10,12 +10,24 @@
         export PATH=$PATH:$ORACLE_HOME/bin
 
         # Run SQL Query
-        sqlplus -s / as sysdba <<EOF
-        alter system archive log current;
-        archive log list;
+        sqlplus -s / as sysdba <<EOF | awk '
+        BEGIN { 
+          print "Database Archive Log Status:"; 
+          print "--------------------------------"; 
+        }
+        /System altered/ { next; }
+        /Database log mode/ { next; }
+        /Automatic archival/ { next; }
+        /Archive destination/ { next; }
+        /Oldest online log sequence/ { next; }
+        /Next log sequence to archive/ { next; }
+        /Current log sequence/ { next; }
+        { print $0; }
+        '
+        EOF
       register: db_status
       ignore_errors: yes
 
     - name: Display the database status
       debug:
-        msg: "Database Status:\n{{ db_status.stdout }}"
+        msg: "{{ db_status.stdout }}"
