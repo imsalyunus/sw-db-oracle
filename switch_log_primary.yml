@@ -2,7 +2,7 @@
 - name: Query Oracle Database Role and Switchover Status
   hosts: ora19cdg02.bwok.org
   tasks:
-    - name: Source the bash profile and set environment variables
+    - name: alter system archive log current
       shell: |
         # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
@@ -15,11 +15,11 @@
       register: db_status
       ignore_errors: yes
 
-    - name: Display the database status
+    - name: Display command alter system archive log current
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
 
-    - name: Source the bash profile and set environment variables
+    - name: archive log list
       shell: |
         # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
@@ -32,6 +32,6 @@
       register: db
       ignore_errors: yes
 
-    - name: Display the database status
+    - name: Display the archive log list
       debug:
         msg: "Database Status:\n{{ db.stdout }}"        
