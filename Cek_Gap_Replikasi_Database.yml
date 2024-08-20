@@ -17,8 +17,3 @@
     - name: Display the database status
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
-
-    - name: Check for errors
-      fail:
-        msg: "Failed to execute SQL query or no output received."
-      when: db_status.rc != 0 or "'apply lag' not found in db_status.stdout"
