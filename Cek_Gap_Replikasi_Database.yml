@@ -1,6 +1,6 @@
 ---
 - name: Query Oracle Database Role and Switchover Status
-  hosts: ora19cdg01.bwok.org
+  hosts: oralce_linux
   tasks:
     - name: Set Oracle Environment Variables
       shell: |
