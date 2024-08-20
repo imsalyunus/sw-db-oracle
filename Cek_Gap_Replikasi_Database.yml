@@ -14,6 +14,14 @@
       register: db_status
       ignore_errors: yes
 
-    - name: Display the database status
+    - name: Display Cek Gap Replikasi Database
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
+
+    - name: Check if apply lag value is 1
+      set_fact:
+        apply_lag_check: "{{ 'apply lag' in db_status.stdout and '1' in db_status.stdout }}"
+    
+    - name: Report status based on apply lag value
+      debug:
+        msg: "Process status: {{ 'Success' if apply_lag_check else 'Failed' }}"
