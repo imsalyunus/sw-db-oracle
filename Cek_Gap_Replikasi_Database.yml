@@ -2,7 +2,7 @@
 - name: Query Oracle Database Role and Switchover Status
   hosts: linuxdb
   tasks:
-    - name: Source the bash profile and set environment variables
+    - name: Cek Gap Replikasi Database
       shell: |
         # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
