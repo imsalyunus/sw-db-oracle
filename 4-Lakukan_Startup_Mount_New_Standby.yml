@@ -1,0 +1,25 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg01.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Start the database in mount mode
+        echo "startup mount;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Check if the database is mounted
+      debug:
+        msg: "Database Status:\n{{ db_status.stdout }}"
+      when: "'Database mounted.' in db_status.stdout"
+
+    - name: Fail if database is not mounted
+      fail:
+        msg: "Failed to mount the database. Output was:\n{{ db_status.stdout }}"
+      when: "'Database mounted.' not in db_status.stdout"
