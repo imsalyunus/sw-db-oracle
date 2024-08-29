@@ -1,0 +1,25 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg02.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Command
+        echo "ALTER SYSTEM SET log_archive_dest_state_2=ENABLE SCOPE=BOTH;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Check if the command was successful
+      debug:
+        msg: "Success: System altered."
+      when: "'System altered' in db_status.stdout"
+
+    - name: Fail if the command was not successful
+      fail:
+        msg: "The command to alter the system failed. Check the output for errors."
+      when: "'System altered' not in db_status.stdout"
