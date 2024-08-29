@@ -1,8 +1,8 @@
 ---
 - name: Query Oracle Database Role and Switchover Status
-  hosts: linuxdb
+  hosts: ora19cdg02.bwok.org
   tasks:
-    - name: Cek Gap Replikasi Database
+    - name: Source the bash profile and set environment variables
       shell: |
         # Set Environment Variables
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
@@ -14,14 +14,15 @@
       register: db_status
       ignore_errors: yes
 
-    - name: Display Cek Gap Replikasi Database
+    - name: Check if the SQL query returned "no rows selected"
+      set_fact:
+        query_result: "{{ 'no rows selected' in db_status.stdout }}"
+
+    - name: Display the database status
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
 
-    - name: Check if apply lag value is 1
-      set_fact:
-        apply_lag_check: "{{ 'apply lag' in db_status.stdout and '1' in db_status.stdout }}"
-    
-    - name: Report status based on apply lag value
+    - name: Notify if no rows were selected
       debug:
-        msg: "Process status: {{ 'Success' if apply_lag_check else 'Failed' }}"
+        msg: "No rows were selected, query executed successfully."
+      when: query_result
