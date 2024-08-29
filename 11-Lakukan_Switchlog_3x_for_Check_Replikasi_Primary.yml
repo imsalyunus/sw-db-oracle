@@ -1,0 +1,21 @@
+---
+- name: Archive Oracle Database Logs
+  hosts: ora19cdg02.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Query to Archive Log
+        for i in {1..3}; do
+          echo "ALTER SYSTEM ARCHIVE LOG CURRENT;" | sqlplus -s / as sysdba
+        done
+      register: archive_status
+      ignore_errors: yes
+
+    - name: Display the archive status
+      debug:
+        msg: "Archive Log Status:\n{{ archive_status.stdout }}"
