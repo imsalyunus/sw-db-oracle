@@ -1,0 +1,30 @@
+---
+- name: Query Oracle Database Apply Lag Status
+  hosts: ora19cdg01.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Query
+        echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Display the database status
+      debug:
+        msg: "Database Status:\n{{ db_status.stdout }}"
+
+    - name: Check if 'apply lag' value is '1'
+      debug:
+        msg: "Success: Apply lag is 1"
+      when: "'1 apply lag' in db_status.stdout"
+      failed_when: "'1 apply lag' not in db_status.stdout"
+
+    - name: Fail the play if apply lag is not '1'
+      fail:
+        msg: "Apply lag is not 1. Aborting."
+      when: "'1 apply lag' not in db_status.stdout"
