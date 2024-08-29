@@ -1,0 +1,26 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg01.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Command
+        echo "ALTER SYSTEM SET log_archive_dest_state_2=DEFER SCOPE=BOTH;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Check if the ALTER SYSTEM command was successful
+      debug:
+        msg: "Success: System altered as expected."
+      when: "'System altered' in db_status.stdout"
+      changed_when: false
+
+    - name: Fail if the ALTER SYSTEM command was not successful
+      fail:
+        msg: "The ALTER SYSTEM command did not succeed. The expected output was not found."
+      when: "'System altered' not in db_status.stdout"
