@@ -1,0 +1,45 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg01.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Query
+        echo "SELECT database_role, switchover_status FROM v\$database;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Display the database status
+      debug:
+        msg: "Database Status:\n{{ db_status.stdout }}"
+
+    - name: Check if output contains 'TO STANDBY'
+      set_fact:
+        to_standby_required: "{{ 'TO STANDBY' in db_status.stdout }}"
+
+    - name: Alter database to switchover to standby
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run ALTER DATABASE command
+        echo "ALTER DATABASE COMMIT TO SWITCHOVER TO STANDBY;" | sqlplus -s / as sysdba
+      when: to_standby_required
+      register: alter_db_status
+
+    - name: Display the result of ALTER DATABASE command
+      debug:
+        msg: "ALTER DATABASE command result:\n{{ alter_db_status.stdout }}"
+      when: to_standby_required
+
+    - name: Fail the playbook if 'TO STANDBY' is not found
+      fail:
+        msg: "The output does not contain 'TO STANDBY'. Stopping the workflow."
+      when: not to_standby_required
