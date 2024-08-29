@@ -1,0 +1,29 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg02.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Query to get database details
+        echo "SELECT name, open_mode, database_role FROM v\$database;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Check if database role is PHYSICAL STANDBY
+      set_fact:
+        is_physical_standby: "{{ 'PHYSICAL STANDBY' in db_status.stdout }}"
+
+    - name: Ensure the database role is PHYSICAL STANDBY
+      fail:
+        msg: "Database role is not PHYSICAL STANDBY. Aborting the process."
+      when: not is_physical_standby
+
+    - name: Output the database status
+      debug:
+        msg: "Database role is PHYSICAL STANDBY. Proceeding with the process."
+      when: is_physical_standby
