@@ -1,0 +1,25 @@
+---
+- name: Query Oracle Database Role and Switchover Status
+  hosts: ora19cdg02.bwok.org
+  tasks:
+    - name: Source the bash profile and set environment variables
+      shell: |
+        # Set Environment Variables
+        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+        export ORACLE_SID=orcl
+        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Command
+        echo "ALTER DATABASE OPEN;" | sqlplus -s / as sysdba
+      register: db_status
+      ignore_errors: yes
+
+    - name: Check for success in database status
+      fail:
+        msg: "Database could not be opened. Output: {{ db_status.stdout }}"
+      when: "'Database altered' not in db_status.stdout"
+
+    - name: Display success message
+      debug:
+        msg: "Database successfully opened.\n{{ db_status.stdout }}"
+      when: "'Database altered' in db_status.stdout"
