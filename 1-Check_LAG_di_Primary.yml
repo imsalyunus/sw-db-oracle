@@ -22,17 +22,17 @@
       set_fact:
         query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
-    - name: Extract lag value
+    - name: Extract lag value if query result is not empty
       set_fact:
-        lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim }}"
-    
+        lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim if not query_result else '' }}"
+
     - name: Display extracted lag value
       debug:
         msg: "Extracted Lag Value: '{{ lag_value }}'"
 
     - name: Check if the lag value indicates readiness for switchover
       set_fact:
-        is_ready_for_switchover: "{{ lag_value == '+00 00:00:00' or lag_value == '+00 00:00:01' or lag_value == '+00 00:00:02' }}"
+        is_ready_for_switchover: "{{ lag_value in ['+00 00:00:00', '+00 00:00:01', '+00 00:00:02'] }}"
 
     - name: Display readiness status
       debug:
