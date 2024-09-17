@@ -1,5 +1,5 @@
 ---
-- name: Query Oracle Database Role and Switchover Status for DB1
+- name: Query Oracle Database Role and Switchover Status
   hosts: linuxdb
   tasks:
     - name: Source the bash profile and set environment variables
@@ -11,32 +11,18 @@
 
         # Run SQL Query
         echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
-      register: db1_status
+      register: db_status
       ignore_errors: yes
 
     - name: Check if the SQL query returned "no rows selected"
       set_fact:
-        db1_query_result: "{{ 'no rows selected' in db1_status.stdout }}"
+        query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
-    - name: Parse the apply lag value from query results
-      set_fact:
-        apply_lag_value: "{{ (db1_status.stdout | regex_search('VALUE\n([^ ]+)', '\\1') | default('0')) }}"
-
-    - name: Determine if DB1 is ready for switchover
-      set_fact:
-        db1_switchover_status: >
-          {% if db1_query_result %}
-            "Database DB1 belum siap dilakukan switchover. Tidak ada data apply lag yang ditemukan."
-          {% elif apply_lag_value in ['1', '2', '3'] %}
-            "Database DB1 siap dilakukan switchover."
-          {% else %}
-            "Database DB1 belum siap dilakukan switchover. Apply lag value: {{ apply_lag_value }}"
-          {% endif %}
-
-    - name: Display the database status for DB1
+    - name: Display the database status
       debug:
-        msg: "Database DB1 Status:\n{{ db1_status.stdout }}"
+        msg: "Database Status:\n{{ db_status.stdout }}"
 
-    - name: Notify the switchover readiness status for DB1
+    - name: Notify if no rows were selected
       debug:
-        msg: "{{ db1_switchover_status }}"
+        msg: "No rows were selected, query executed successfully."
+      when: query_result
