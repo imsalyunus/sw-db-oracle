@@ -18,9 +18,27 @@
       set_fact:
         query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
+    - name: Parse the lag value from the SQL query result
+      set_fact:
+        lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim }}"
+
+    - name: Check if the lag value is among acceptable values
+      set_fact:
+        is_ready_for_switchover: "{{ lag_value in ['+00 00:00:00', '+00 00:00:01', '+00 00:00:02'] }}"
+
     - name: Display the database status
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
+
+    - name: Notify if the database is ready for switchover
+      debug:
+        msg: "Database siap dilakukan switchover."
+      when: is_ready_for_switchover and not query_result
+
+    - name: Notify if the database is not ready for switchover
+      debug:
+        msg: "Database belum siap dilakukan switchover."
+      when: not is_ready_for_switchover and not query_result
 
     - name: Notify if no rows were selected
       debug:
