@@ -1,5 +1,33 @@
+#---
+#- name: Query Oracle Database Role and Switchover Status
+#  hosts: linuxdb
+#  tasks:
+#    - name: Source the bash profile and set environment variables
+#      shell: |
+#        # Set Environment Variables
+#        export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
+#        export ORACLE_SID=orcl
+#        export PATH=$PATH:$ORACLE_HOME/bin
+
+        # Run SQL Query
+#        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+#      register: db_status
+#      ignore_errors: yes
+
+#    - name: Check if the SQL query returned "no rows selected"
+#      set_fact:
+#        query_result: "{{ 'no rows selected' in db_status.stdout }}"
+
+#    - name: Display the database status
+#      debug:
+#        msg: "Database Status:\n{{ db_status.stdout }}"
+
+#    - name: Notify if no rows were selected
+#      debug:
+#        msg: "No rows were selected, query executed successfully."
+#      when: query_result
 ---
-- name: Query Oracle Database Role and Switchover Status
+- name: Oracle Database Switchover
   hosts: linuxdb
   tasks:
     - name: Source the bash profile and set environment variables
@@ -8,21 +36,91 @@
         export ORACLE_HOME=/u01/app/oracle/product/19.3.0/dbhome_1
         export ORACLE_SID=orcl
         export PATH=$PATH:$ORACLE_HOME/bin
-
-        # Run SQL Query
-        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
-      register: db_status
       ignore_errors: yes
 
-    - name: Check if the SQL query returned "no rows selected"
+    - name: Query apply lag from gv$dataguard_stats on DB1
+      shell: |
+        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+      register: db1_apply_lag
+      ignore_errors: yes
+
+    - name: Query apply lag from gv$dataguard_stats on DB2
+      shell: |
+        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+      register: db2_apply_lag
+      ignore_errors: yes
+
+    - name: Check if apply lag is below 3 on DB1
       set_fact:
-        query_result: "{{ 'no rows selected' in db_status.stdout }}"
+        db1_apply_lag_ok: "{{ 'apply lag' in db1_apply_lag.stdout and '3' not in db1_apply_lag.stdout.split()[2] }}"
 
-    - name: Display the database status
-      debug:
-        msg: "Database Status:\n{{ db_status.stdout }}"
+    - name: Check if apply lag is below 3 on DB2
+      set_fact:
+        db2_apply_lag_ok: "{{ 'apply lag' in db2_apply_lag.stdout and '3' not in db2_apply_lag.stdout.split()[2] }}"
 
-    - name: Notify if no rows were selected
+    - name: Display apply lag status for DB1
       debug:
-        msg: "No rows were selected, query executed successfully."
-      when: query_result
+        msg: "DB1 Apply Lag:\n{{ db1_apply_lag.stdout }}"
+
+    - name: Display apply lag status for DB2
+      debug:
+        msg: "DB2 Apply Lag:\n{{ db2_apply_lag.stdout }}"
+
+    - name: Notify if apply lag is not suitable for switchover on DB1
+      debug:
+        msg: "Apply lag is too high on DB1. Switchover cannot be performed."
+      when: not db1_apply_lag_ok
+
+    - name: Notify if apply lag is not suitable for switchover on DB2
+      debug:
+        msg: "Apply lag is too high on DB2. Switchover cannot be performed."
+      when: not db2_apply_lag_ok
+
+    - name: Query database role and switchover status on DB1
+      shell: |
+        echo "SELECT database_role, switchover_status FROM v$database;" | sqlplus -s / as sysdba
+      register: db1_role_status
+      ignore_errors: yes
+
+    - name: Query database role and switchover status on DB2
+      shell: |
+        echo "SELECT database_role, switchover_status FROM v$database;" | sqlplus -s / as sysdba
+      register: db2_role_status
+      ignore_errors: yes
+
+    - name: Check switchover status on DB1
+      set_fact:
+        db1_switchover_ok: "{{ 'PHYSICAL STANDBY' not in db1_role_status.stdout and 'NOT ALLOWED' not in db1_role_status.stdout }}"
+
+    - name: Check switchover status on DB2
+      set_fact:
+        db2_switchover_ok: "{{ 'PRIMARY' in db2_role_status.stdout and 'TO STANDBY' in db2_role_status.stdout }}"
+
+    - name: Display database role and switchover status for DB1
+      debug:
+        msg: "DB1 Role and Switchover Status:\n{{ db1_role_status.stdout }}"
+
+    - name: Display database role and switchover status for DB2
+      debug:
+        msg: "DB2 Role and Switchover Status:\n{{ db2_role_status.stdout }}"
+
+    - name: Notify if switchover status is not suitable for switchover on DB1
+      debug:
+        msg: "Switchover is not allowed on DB1."
+      when: not db1_switchover_ok
+
+    - name: Notify if switchover status is not suitable for switchover on DB2
+      debug:
+        msg: "Switchover status is not correct on DB2."
+      when: not db2_switchover_ok
+
+    - name: Perform switchover from DB1 to DB2 if conditions are met
+      shell: |
+        if [ "{{ db1_apply_lag_ok }}" == "true" ] && [ "{{ db2_apply_lag_ok }}" == "true" ] && [ "{{ db1_switchover_ok }}" == "true" ] && [ "{{ db2_switchover_ok }}" == "true" ]; then
+          echo "Performing switchover from DB1 to DB2."
+          # Commands for switchover go here, e.g., using `sqlplus` to execute the switchover command
+          echo "ALTER DATABASE COMMIT TO SWITCHOVER;" | sqlplus -s / as sysdba
+        else
+          echo "Conditions for switchover are not met."
+        fi
+      ignore_errors: yes
