@@ -1,6 +1,6 @@
 ---
 - name: Query Oracle Database Role and Switchover Status
-  hosts: ora19cdg01.bwok.org
+  hosts: ora19cdg02.bwok.org
   tasks:
     - name: Source the bash profile and set environment variables
       shell: |
