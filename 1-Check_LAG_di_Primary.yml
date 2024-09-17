@@ -1,5 +1,5 @@
 ---
-- name: Query Oracle Database Role and Switchover Status
+- name: Query Oracle Database Role and Switchover Status for DB1
   hosts: linuxdb
   tasks:
     - name: Source the bash profile and set environment variables
@@ -11,32 +11,32 @@
 
         # Run SQL Query
         echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
-      register: db_status
+      register: db1_status
       ignore_errors: yes
 
     - name: Check if the SQL query returned "no rows selected"
       set_fact:
-        query_result: "{{ 'no rows selected' in db_status.stdout }}"
+        db1_query_result: "{{ 'no rows selected' in db1_status.stdout }}"
 
     - name: Parse the apply lag value from query results
       set_fact:
-        apply_lag_value: "{{ (db_status.stdout | regex_search('VALUE\n([^ ]+)', '\\1') | default('0')) }}"
+        apply_lag_value: "{{ (db1_status.stdout | regex_search('VALUE\n([^ ]+)', '\\1') | default('0')) }}"
 
-    - name: Determine if the database is ready for switchover
+    - name: Determine if DB1 is ready for switchover
       set_fact:
-        switchover_status: >
-          {% if query_result %}
-            "Database belum siap dilakukan switchover. Tidak ada data apply lag yang ditemukan."
+        db1_switchover_status: >
+          {% if db1_query_result %}
+            "Database DB1 belum siap dilakukan switchover. Tidak ada data apply lag yang ditemukan."
           {% elif apply_lag_value in ['1', '2', '3'] %}
-            "Database siap dilakukan switchover."
+            "Database DB1 siap dilakukan switchover."
           {% else %}
-            "Database belum siap dilakukan switchover. Apply lag value: {{ apply_lag_value }}"
+            "Database DB1 belum siap dilakukan switchover. Apply lag value: {{ apply_lag_value }}"
           {% endif %}
 
-    - name: Display the database status
+    - name: Display the database status for DB1
       debug:
-        msg: "Database Status:\n{{ db_status.stdout }}"
+        msg: "Database DB1 Status:\n{{ db1_status.stdout }}"
 
-    - name: Notify the switchover readiness status
+    - name: Notify the switchover readiness status for DB1
       debug:
-        msg: "{{ switchover_status }}"
+        msg: "{{ db1_switchover_status }}"
