@@ -18,11 +18,25 @@
       set_fact:
         query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
+    - name: Parse the apply lag value from query results
+      set_fact:
+        apply_lag_value: "{{ (db_status.stdout | regex_search('VALUE\n([^ ]+)', '\\1') | default('0')) }}"
+
+    - name: Determine if the database is ready for switchover
+      set_fact:
+        switchover_status: >
+          {% if query_result %}
+            "Database belum siap dilakukan switchover. Tidak ada data apply lag yang ditemukan."
+          {% elif apply_lag_value in ['1', '2', '3'] %}
+            "Database siap dilakukan switchover."
+          {% else %}
+            "Database belum siap dilakukan switchover. Apply lag value: {{ apply_lag_value }}"
+          {% endif %}
+
     - name: Display the database status
       debug:
         msg: "Database Status:\n{{ db_status.stdout }}"
 
-    - name: Notify if no rows were selected
+    - name: Notify the switchover readiness status
       debug:
-        msg: "No rows were selected, query executed successfully."
-      when: query_result
+        msg: "{{ switchover_status }}"
