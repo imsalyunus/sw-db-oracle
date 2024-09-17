@@ -10,7 +10,7 @@
         export PATH=$PATH:$ORACLE_HOME/bin
 
         # Run SQL Query
-        echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
       register: db_status
       ignore_errors: yes
 
