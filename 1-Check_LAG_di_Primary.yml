@@ -1,6 +1,6 @@
 ---
 - name: Query Oracle Database Role and Switchover Status
-  hosts: ora19cdg02.bwok.org
+  hosts: linuxdb
   tasks:
     - name: Source the bash profile and set environment variables
       shell: |
@@ -10,37 +10,17 @@
         export PATH=$PATH:$ORACLE_HOME/bin
 
         # Run SQL Query
-        echo "SELECT inst_id, name, value FROM gv$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
+        echo "SELECT inst_id, name, value FROM gv\$dataguard_stats WHERE name='apply lag';" | sqlplus -s / as sysdba
       register: db_status
       ignore_errors: yes
 
-    - name: Parse and display query result
-      block:
-        - name: Check if the SQL query returned "no rows selected"
-          set_fact:
-            query_result: "{{ 'no rows selected' in db_status.stdout }}"
+    - name: Check if the SQL query returned "no rows selected"
+      set_fact:
+        query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
-        - name: Extract lag value from query result
-          set_fact:
-            lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim if not query_result else '' }}"
-
-        - name: Format lag value output
-          set_fact:
-            formatted_output: |
-              {% if query_result %}
-              no rows selected
-              {% else %}
-              INST_ID NAME
-              ---------- --------------------------------
-              VALUE
-              ----------------------------------------------------------------
-              1 apply lag
-              {{ lag_value }}
-              {% endif %}
-        
-        - name: Display formatted query result
-          debug:
-            msg: "Query Result:\n{{ formatted_output }}"
+    - name: Display the database status
+      debug:
+        msg: "Database Status:\n{{ db_status.stdout }}"
 
     - name: Notify if no rows were selected
       debug:
