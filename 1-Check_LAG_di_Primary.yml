@@ -14,15 +14,35 @@
       register: db_status
       ignore_errors: yes
 
-    - name: Check if the SQL query returned "no rows selected"
-      set_fact:
-        query_result: "{{ 'no rows selected' in db_status.stdout }}"
+    - name: Parse and display query result
+      block:
+        - name: Check if the SQL query returned "no rows selected"
+          set_fact:
+            query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
-    - name: Display the database status
-      debug:
-        msg: "Database Status:\n{{ db_status.stdout }}"
+        - name: Extract lag value from query result
+          set_fact:
+            lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim if not query_result else '' }}"
+
+        - name: Format lag value output
+          set_fact:
+            formatted_output: |
+              {% if query_result %}
+              no rows selected
+              {% else %}
+              INST_ID NAME
+              ---------- --------------------------------
+              VALUE
+              ----------------------------------------------------------------
+              1 apply lag
+              {{ lag_value }}
+              {% endif %}
+        
+        - name: Display formatted query result
+          debug:
+            msg: "Query Result:\n{{ formatted_output }}"
 
     - name: Notify if no rows were selected
       debug:
         msg: "No rows were selected, query executed successfully."
-      when: query_result 
+      when: query_result
