@@ -14,41 +14,15 @@
       register: db_status
       ignore_errors: yes
 
-    - name: Display raw SQL query result
-      debug:
-        msg: "Raw SQL Query Result:\n{{ db_status.stdout }}"
-
     - name: Check if the SQL query returned "no rows selected"
       set_fact:
         query_result: "{{ 'no rows selected' in db_status.stdout }}"
 
-    - name: Extract lag value if query result is not empty
-      set_fact:
-        lag_value: "{{ db_status.stdout | regex_search('VALUE\n(.+)', '\\1') | trim if not query_result else '' }}"
-
-    - name: Display extracted lag value
+    - name: Display the database status
       debug:
-        msg: "Extracted Lag Value: '{{ lag_value }}'"
-
-    - name: Check if the lag value indicates readiness for switchover
-      set_fact:
-        is_ready_for_switchover: "{{ lag_value in ['+00 00:00:00', '+00 00:00:01', '+00 00:00:02'] }}"
-
-    - name: Display readiness status
-      debug:
-        msg: "Is ready for switchover: {{ is_ready_for_switchover }}"
-
-    - name: Notify if the database is ready for switchover
-      debug:
-        msg: "Database siap dilakukan switchover."
-      when: is_ready_for_switchover and not query_result
-
-    - name: Notify if the database is not ready for switchover
-      debug:
-        msg: "Database belum siap dilakukan switchover."
-      when: not is_ready_for_switchover and not query_result
+        msg: "Database Status:\n{{ db_status.stdout }}"
 
     - name: Notify if no rows were selected
       debug:
         msg: "No rows were selected, query executed successfully."
-      when: query_result
+      when: query_result 
