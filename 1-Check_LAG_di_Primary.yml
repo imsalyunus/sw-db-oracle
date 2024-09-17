@@ -28,11 +28,15 @@
     
     - name: Display extracted lag value
       debug:
-        msg: "Extracted Lag Value: {{ lag_value }}"
+        msg: "Extracted Lag Value: '{{ lag_value }}'"
 
     - name: Check if the lag value indicates readiness for switchover
       set_fact:
         is_ready_for_switchover: "{{ lag_value == '+00 00:00:00' or lag_value == '+00 00:00:01' or lag_value == '+00 00:00:02' }}"
+
+    - name: Display readiness status
+      debug:
+        msg: "Is ready for switchover: {{ is_ready_for_switchover }}"
 
     - name: Notify if the database is ready for switchover
       debug:
